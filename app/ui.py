@@ -23,13 +23,32 @@ if str(ROOT) not in sys.path:
 import streamlit as st  # noqa: E402
 
 from rag.answer import RagPipeline  # noqa: E402
+from rag.chunk import chunk_corpus  # noqa: E402
 from rag.config import settings  # noqa: E402
+from rag.embed import get_embedder  # noqa: E402
+from rag.extract import extract_corpus  # noqa: E402
+from rag.store import VectorStore  # noqa: E402
 
-st.set_page_config(page_title="Atman RAG", page_icon="[?]", layout="wide")
+st.set_page_config(page_title="Atman RAG", layout="wide")
 
 
-@st.cache_resource(show_spinner="Loading index...")
+def ensure_index() -> None:
+    store = VectorStore()
+    if store.count() > 0:
+        return
+
+    blocks = extract_corpus(settings.pdf_dir)
+    if not blocks:
+        raise RuntimeError(f"No PDFs found in {settings.pdf_dir}")
+    chunks = chunk_corpus(blocks)
+    vectors = get_embedder().embed_documents([c.embed_text for c in chunks])
+    store.reset()
+    store.add(chunks, vectors)
+
+
+@st.cache_resource(show_spinner="Loading or building index...")
 def get_pipeline() -> RagPipeline:
+    ensure_index()
     return RagPipeline()
 
 
@@ -40,7 +59,7 @@ st.caption(
 )
 
 if not settings.has_key:
-    st.error("OPENAI_API_KEY is not set. Copy .env.example to .env and add your key.")
+    st.error("OPENAI_API_KEY is not set. Add it in Streamlit app secrets.")
     st.stop()
 
 pipeline = get_pipeline()

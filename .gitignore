@@ -7,3 +7,4 @@ venv/
 *.egg-info/
 .DS_Store
 logs/
+storage/chroma/
