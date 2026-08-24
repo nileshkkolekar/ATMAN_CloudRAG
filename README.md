@@ -843,10 +843,4 @@ I read public RAG repositories for ideas — notably the Corrective RAG (CRAG) a
 
 ---
 
-## Assumptions made
 
-Per §10 of the brief, ambiguities resolved with a documented assumption:
-
-1. **Submission address.** The header table says `Shounak.Kanade@atmanconsultants.com`; §6 says `hr@atmancloud.com`. Two different addresses on two different domains. I am sending to **both**, using the §6 subject line, and noting the discrepancy.
-2. **Section numbering.** The brief jumps from §6 to §8 — there is no §7. Harmless; noted for completeness.
-3. **"Chunk" in the citation requirement** is interpreted as the full retrieved chunk text, returned in the API `sources[].chunk` field and shown in expandable panels in the UI.
