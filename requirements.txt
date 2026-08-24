@@ -1,0 +1,38 @@
+# Libraries for mechanism; the judgement is in rag/.
+# Floors are the versions this was built and verified against (see README).
+
+# --- ingestion ---
+pymupdf>=1.24.0          # PDF text, table detection, line bboxes (clip detection)
+tiktoken>=0.7.0          # token counting for chunk sizing
+
+# --- retrieval ---
+chromadb>=0.5.0          # persistent vector store, metadata as a first-class field
+rank-bm25>=0.2.2         # lexical arm: document codes and literals
+
+# --- provider ---
+openai>=1.40.0           # embeddings, reranking, generation
+
+# --- config ---
+pydantic>=2.7            # typed settings and API models
+pydantic-settings>=2.2   # .env loading
+
+# --- interfaces ---
+# fastapi>=0.115 is REQUIRED, not cosmetic: 0.109 passes `on_startup` to
+# starlette's Router, which newer starlette rejects with
+#   TypeError: Router.__init__() got an unexpected keyword argument 'on_startup'
+# A `>=0.109` floor lets pip resolve that broken pair on a fresh install.
+fastapi>=0.115           # POST /query, GET /health
+uvicorn>=0.27            # ASGI server
+streamlit>=1.30          # reviewer-facing UI
+
+# --- eval & tests ---
+PyYAML>=6.0              # eval question set
+pytest>=7.4              # tests (no API key or network required)
+
+# --- optional: local embedding fallback (EMBEDDING_PROVIDER=local) ---
+# Deliberately NOT installed by default - it pulls in torch (~2GB) for a code
+# path most reviewers will never take. rag/embed.py imports it lazily inside
+# LocalEmbedder, so everything else works without it. Install only if you want
+# to run with no API key, or on a confidential corpus that must not leave the
+# machine:
+#     pip install sentence-transformers

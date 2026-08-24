@@ -1,0 +1,13 @@
+# Normalise text to LF in the repo; check out native on Windows.
+* text=auto eol=lf
+
+# Never touch these - line-ending translation corrupts them.
+*.pdf      binary
+*.bin      binary
+*.sqlite3  binary
+*.png      binary
+*.jpg      binary
+
+# Keep generated evidence out of diff noise, but still versioned.
+eval/qa_log.md    linguist-generated=true
+eval/ablation.md  linguist-generated=true

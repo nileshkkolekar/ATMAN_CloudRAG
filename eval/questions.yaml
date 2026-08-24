@@ -1,0 +1,160 @@
+# One artefact, two deliverables: the brief separately requires a "Sample Q&A log
+# with 10+ questions including at least 2 unanswerable ones" and lists eval
+# metrics under bonus. These are the same file. run_eval.py emits qa_log.md and
+# the metrics table from this set.
+#
+# Every question is here to stress a SPECIFIC design decision, named in `tests`.
+# A question set that only asks easy things measures nothing.
+
+- question: What storage does the Standard tier include?
+  answerable: true
+  expect_doc: Pricing_and_SLA.pdf
+  expect_contains: ["500 GB"]
+  tests: >-
+    The four-way "Standard" collision. Must return the customer pricing tier,
+    not the HR access level, the rate-limit tier, or the health plan.
+
+- question: What does Standard Tier Access mean for employees?
+  answerable: true
+  expect_doc: Security_Policy.pdf
+  expect_contains: ["Default access"]
+  tests: The same collision from the other side - must land in the security policy.
+
+- question: What is document SEC-POL-007?
+  answerable: true
+  expect_doc: Security_Policy.pdf
+  tests: >-
+    Exact identifier match. Dense embeddings are weak on alphanumeric codes;
+    BM25 must carry this one. Verifies header prefixing put the code on every chunk.
+
+- question: How long do I have to report a suspected data breach?
+  answerable: true
+  expect_doc: Security_Policy.pdf
+  expect_contains: ["1 hour"]
+  tests: >-
+    Near-zero lexical overlap with the answering sentence ("must be reported to
+    security@atmancloud.com within 1 hour of discovery"). Dense must carry this one.
+
+- question: A Standard account had 99.3% uptime this month. What service credit applies?
+  answerable: true
+  expect_doc: Pricing_and_SLA.pdf
+  expect_contains: ["10%"]
+  derived: true          # the answer is COMPUTED, not quoted - see note below
+  tests: >-
+    Multi-step arithmetic across two sections - the 99.5% guarantee from the SLA
+    table and the 5%-per-0.1% credit rule. (0.2 / 0.1) * 5% = 10%.
+    Marked `derived` because "10%" appears in no chunk: it only exists in the
+    generated answer. Chunk-level retrieval scoring must skip it, or it counts a
+    correct retrieval as a miss.
+
+- question: Can I get a refund on an annual plan after 20 days?
+  answerable: true
+  expect_doc: Pricing_and_SLA.pdf
+  expect_contains: ["non-refundable"]
+  tests: Conditional reasoning - the 14-day boundary must be applied, not just quoted.
+
+- question: Who approves access to the Atman Cloud Console?
+  answerable: true
+  expect_doc: Onboarding_Guide.pdf
+  expect_contains: ["Security"]
+  tests: Table extraction plus a cross-document reference to the security policy.
+
+- question: What should I do if the appliance LED is blinking red?
+  answerable: true
+  expect_doc: Product_Manual.pdf
+  expect_truncation_flag: true
+  tests: >-
+    The row that is CLIPPED in the source PDF. A correct answer states the fix is
+    cut off in the source rather than inventing the rest of the sentence.
+
+- question: How much PTO do full-time employees accrue?
+  answerable: true
+  expect_doc: Employee_Handbook.pdf
+  expect_contains: ["1.75"]
+  tests: Baseline single-hop retrieval from a clean prose section.
+
+- question: What happens if I exceed the rate limit on the API?
+  answerable: true
+  expect_doc: API_Reference.pdf
+  expect_contains: ["429"]
+  tests: Literal token (HTTP 429) plus a table row - hybrid retrieval.
+
+- question: How long is data kept after I cancel my subscription?
+  answerable: true
+  expect_doc: FAQ_Support.pdf
+  expect_contains: ["90 days"]
+  tests: >-
+    "30 days" appears in five unrelated senses across this corpus (refresh
+    tokens, trash, Recovery Bin, SLA claims, Restricted deletion). The correct
+    answer here is 90, so a near-miss retrieval is visible as a wrong number.
+
+- question: What happens at my Day 30 check-in?
+  answerable: true
+  expect_doc: Onboarding_Guide.pdf
+  tests: >-
+    Cross-document reference - the onboarding guide defers to the handbook for
+    the formal review cycle. Top-k must exceed 1 and cross file boundaries.
+
+- question: How much storage does the CSP-400 have?
+  answerable: true
+  expect_doc: Product_Manual.pdf
+  expect_contains: ["16TB"]
+  tests: >-
+    The answerable twin of the CSP-600 question below. If the system refuses
+    this one, the threshold is too aggressive.
+
+- question: Is two-factor authentication mandatory?
+  answerable: true
+  expect_doc: FAQ_Support.pdf
+  expect_contains: ["Enterprise"]
+  tests: Conditional answer - optional for some tiers, mandatory for others.
+
+- question: What does the company match on retirement contributions?
+  answerable: true
+  expect_doc: Employee_Handbook.pdf
+  expect_contains: ["4%"]
+  tests: Baseline retrieval from a chunk that was merged with its siblings.
+
+- question: How much PTO do I accrue?
+  answerable: true
+  expect_doc: Employee_Handbook.pdf
+  expect_contains: ["Full-time", "1.75"]
+  tests: >-
+    Scope preservation. The handbook scopes this to FULL-TIME employees, but the
+    question says only "I". The answer must keep the qualifier - dropping it
+    turns a scoped policy into a universal claim, and a contractor asking this
+    exact question would get a confidently wrong answer. This is the contractor
+    failure hiding behind an ambiguous pronoun.
+
+# ---- unanswerable ----------------------------------------------------------
+# Five, not two. Refusal is 15% of the rubric and the hardest of these is not
+# an off-topic question - it is a plausible one whose answer does not exist.
+
+- question: What is the CSP-600's storage capacity?
+  answerable: false
+  tests: >-
+    THE hard refusal. Only the CSP-200 and CSP-400 exist. Retrieval returns the
+    storage section with high confidence and the chunk genuinely IS about
+    storage capacity, so the relevance gate cannot catch it. The model must
+    notice the model number is absent rather than interpolating between 4TB and 16TB.
+
+- question: How do I configure SSO with Okta?
+  answerable: false
+  tests: Off-topic but adjacent vocabulary (auth, configuration). Cleanest refusal.
+
+- question: How much PTO do contractors accrue?
+  answerable: false
+  tests: >-
+    The handbook covers full-time employees only. Retrieval returns the PTO
+    section confidently; the answer must not silently apply it to contractors.
+
+- question: What is Atman Cloud's revenue for 2025?
+  answerable: false
+  tests: Wholly outside the corpus - nothing should score above the threshold.
+
+- question: What is the penalty if Enterprise uptime drops below 99.0%?
+  answerable: false
+  tests: >-
+    The credit formula is capped at 30% of the monthly fee, but no penalty
+    beyond credits is defined. Tempting to extrapolate the formula past its
+    stated cap.
