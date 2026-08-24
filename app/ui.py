@@ -8,6 +8,7 @@ Run:  streamlit run app/ui.py
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -21,6 +22,14 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import streamlit as st  # noqa: E402
+
+# Streamlit Cloud exposes secrets through st.secrets. Copy the key into the
+# environment before importing rag.config, because settings is created at import.
+try:
+    if not os.environ.get("OPENAI_API_KEY") and "OPENAI_API_KEY" in st.secrets:
+        os.environ["OPENAI_API_KEY"] = str(st.secrets["OPENAI_API_KEY"])
+except Exception:
+    pass
 
 from rag.answer import RagPipeline  # noqa: E402
 from rag.chunk import chunk_corpus  # noqa: E402
